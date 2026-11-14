@@ -1,0 +1,11 @@
+paper_a_title,paper_b_title,gold_label
+AI Tutoring Boosts Math Scores in Middle School,No Effect of Chatbot Tutors on Undergraduate Retention,apparent_contradiction
+AI Tutoring Boosts Math Scores in Middle School,Confirming AI Tutoring Math Gains: A Replication,supports_compatible
+AI Tutoring Boosts Math Scores in Middle School,AI Tutor Group Underperforms in a Pre-Registered RCT,genuine_contradiction
+AI Tutoring Boosts Math Scores in Middle School,AI Tutoring and Long-Term Retention: A Research Note,apparent_contradiction
+No Effect of Chatbot Tutors on Undergraduate Retention,Confirming AI Tutoring Math Gains: A Replication,apparent_contradiction
+No Effect of Chatbot Tutors on Undergraduate Retention,AI Tutor Group Underperforms in a Pre-Registered RCT,apparent_contradiction
+No Effect of Chatbot Tutors on Undergraduate Retention,AI Tutoring and Long-Term Retention: A Research Note,apparent_contradiction
+Confirming AI Tutoring Math Gains: A Replication,AI Tutor Group Underperforms in a Pre-Registered RCT,genuine_contradiction
+Confirming AI Tutoring Math Gains: A Replication,AI Tutoring and Long-Term Retention: A Research Note,apparent_contradiction
+AI Tutor Group Underperforms in a Pre-Registered RCT,AI Tutoring and Long-Term Retention: A Research Note,apparent_contradiction

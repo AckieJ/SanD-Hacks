@@ -1,0 +1,21 @@
+# Vultr deployment target (proposal section 13). For local/dev, skip this
+# entirely -- `uvicorn app.main:app --reload` with RESEARCHLENS_MODE=mock
+# needs no Docker, no Redis, no Postgres.
+version: "3.9"
+services:
+  api:
+    build: ./backend
+    env_file: ./backend/.env
+    ports: ["8000:8000"]
+    depends_on: [redis]
+  worker:
+    build: ./backend
+    env_file: ./backend/.env
+    command: rq worker -u ${REDIS_URL:-redis://redis:6379/0} researchlens
+    depends_on: [redis]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  # Point DATABASE_URL in backend/.env at a managed Tiger Data / Postgres
+  # instance for production rather than running Postgres here -- the
+  # proposal's architecture (section 4) keeps the DB external to the VM.

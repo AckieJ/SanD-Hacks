@@ -1,0 +1,12 @@
+# Starting allowlist from proposal section 6. VERIFY ROBOTS.TXT AND TERMS
+# FOR EACH DOMAIN before a real run -- this file being populated is not
+# itself permission; see section 6, rule 2.
+domains:
+  - ncbi.nlm.nih.gov
+  - europepmc.org
+  - arxiv.org
+  - biorxiv.org
+  - medrxiv.org
+  - doaj.org
+  # Add open-access publisher domains returned by OpenAlex for your demo
+  # topic here, one per line, each checked against robots.txt first.
