@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResearchLens — Claim-Level Evidence Graph</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-dot"></span>
+      <div>
+        <h1>ResearchLens</h1>
+        <p class="subtitle">Claim-level evidence graph with verbatim source quotes</p>
+      </div>
+    </div>
+    <form id="question-form" class="question-form">
+      <input
+        id="question-input"
+        type="text"
+        value="Do AI tutors improve learning?"
+        placeholder="Enter a research question..."
+        required
+      />
+      <button type="submit" class="btn-primary">Analyze Question</button>
+    </form>
+    <div id="bd-status-pill" class="status-pill">Checking Bright Data...</div>
+  </header>
+
+  <section class="progress-strip" id="progress-strip">
+    <div class="stat"><span>OpenAlex / Crossref</span><strong id="cnt-oa">-</strong></div>
+    <div class="stat"><span>Bright Data Scholar</span><strong id="cnt-scholar">-</strong></div>
+    <div class="stat"><span>De-duplicated</span><strong id="cnt-dedup">-</strong></div>
+    <div class="stat"><span>Full Text (Unlocker)</span><strong id="cnt-full">-</strong></div>
+    <div class="stat"><span>Abstract Only</span><strong id="cnt-abs">-</strong></div>
+    <div class="stat"><span>Claims Extracted</span><strong id="cnt-claims">-</strong></div>
+  </section>
+
+  <main class="workspace">
+    <section class="graph-pane">
+      <div class="graph-controls">
+        <label class="ctrl">
+          Min relevance: <span id="rel-val">0.00</span>
+          <input id="rel-slider" type="range" min="0" max="0.9" step="0.05" value="0" />
+        </label>
+        <input id="search-input" type="search" placeholder="Filter papers by title/author..." />
+        <div class="edge-filters" id="edge-filters">
+          <label><input type="checkbox" value="supports_compatible" checked /> <span class="dot teal"></span>Supports</label>
+          <label><input type="checkbox" value="genuine_contradiction" checked /> <span class="dot red"></span>Genuine Conflict</label>
+          <label><input type="checkbox" value="apparent_contradiction" checked /> <span class="dot red-dash"></span>Apparent Conflict</label>
+          <label><input type="checkbox" value="related_not_comparable" checked /> <span class="dot gray"></span>Not Comparable</label>
+          <label><input type="checkbox" value="unresolved" checked /> <span class="dot amber"></span>Unresolved</label>
+        </div>
+      </div>
+
+      <div class="graph-canvas-wrap">
+        <div id="cy"></div>
+        <div class="ring-legend">
+          <span>Rings: 0.8 · 0.6 · 0.4 · 0.2 relevance</span>
+          <span>Solid border = full text · Dashed border = abstract only</span>
+        </div>
+      </div>
+
+      <footer class="graph-footnote">
+        Relevance helps navigation and is not a measure of truth. Click any paper node or edge to inspect quotes.
+      </footer>
+    </section>
+
+    <aside class="inspector-pane">
+      <nav class="tabs">
+        <button class="tab active" data-tab="paper">Paper &amp; Claims</button>
+        <button class="tab" data-tab="compare">Comparison</button>
+        <button class="tab" data-tab="gaps">Flags &amp; Gaps</button>
+        <button class="tab" data-tab="brightdata">Bright Data Test</button>
+      </nav>
+
+      <div id="tab-paper" class="tab-panel active">
+        <div class="empty-state">Click a paper node on the radial graph to view its metadata, source lanes, and extracted claims with verbatim quotes.</div>
+      </div>
+
+      <div id="tab-compare" class="tab-panel">
+        <div class="empty-state">Click any link between two papers to open the side-by-side condition comparison and both verbatim quotes.</div>
+      </div>
+
+      <div id="tab-gaps" class="tab-panel"></div>
+
+      <div id="tab-brightdata" class="tab-panel">
+        <h3>Bright Data Live Integration</h3>
+        <p class="muted">Test your configured <code>ScholarClient</code> and allowlist-enforced <code>UnlockerClient</code> directly from Node.js.</p>
+
+        <form id="bd-scholar-form" class="bd-form">
+          <label>Google Scholar Scraper Query</label>
+          <div class="row">
+            <input id="bd-scholar-query" type="text" value="AI tutors randomized controlled trial learning" required />
+            <button type="submit" class="btn-primary">Run Scholar</button>
+          </div>
+        </form>
+
+        <form id="bd-unlocker-form" class="bd-form">
+          <label>Web Unlocker URL (Allowlisted Domains Only)</label>
+          <div class="row">
+            <input id="bd-unlocker-url" type="url" value="https://arxiv.org/abs/2401.00001" required />
+            <button type="submit" class="btn-secondary">Fetch Page</button>
+          </div>
+        </form>
+
+        <pre id="bd-output" class="bd-output">Results will appear here...</pre>
+      </div>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

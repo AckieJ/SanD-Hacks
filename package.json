@@ -1,0 +1,16 @@
+{
+  "name": "researchlens",
+  "version": "0.1.0",
+  "description": "ResearchLens: Claim-level evidence graph with Bright Data, Tiger Data, and Gemini",
+  "main": "backend/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
