@@ -1,0 +1,6 @@
+# Manually verify robots.txt and terms before enabling each domain.
+www.ncbi.nlm.nih.gov
+pmc.ncbi.nlm.nih.gov
+europepmc.org
+journals.plos.org
+arxiv.org

@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: researchlens
+      POSTGRES_USER: researchlens
+      POSTGRES_PASSWORD: researchlens
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U researchlens -d researchlens"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+  api:
+    build: ./backend
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+  worker:
+    build: ./backend
+    command: rq worker --url redis://redis:6379/0 researchlens
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+  frontend:
+    build: ./frontend
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
