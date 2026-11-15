@@ -1,51 +1,31 @@
+# Tiger Data is external (set DATABASE_URL in .env). For a purely local database run:
+#   docker compose --profile localdb up --build   (and set DATABASE_URL=postgresql://postgres:postgres@db:5432/researchlens)
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    env_file: .env
+    command: sh -c "python -m app.init_db && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    depends_on: [redis]
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: researchlens
-      POSTGRES_USER: researchlens
-      POSTGRES_PASSWORD: researchlens
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U researchlens -d researchlens"]
-      interval: 5s
-      timeout: 5s
-      retries: 15
+  worker:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    env_file: .env
+    command: rq worker researchlens --url ${REDIS_URL:-redis://redis:6379/0}
+    depends_on: [redis, api]
+    restart: unless-stopped
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redisdata:/data
-  api:
-    build: ./backend
-    env_file: .env
-    restart: unless-stopped
-    volumes:
-      - uploads:/app/uploads
-    depends_on:
-      - postgres
-      - redis
-  worker:
-    build: ./backend
-    command: rq worker --url redis://redis:6379/0 researchlens
-    env_file: .env
-    restart: unless-stopped
-    volumes:
-      - uploads:/app/uploads
-    depends_on:
-      - postgres
-      - redis
-  frontend:
+  web:
     build: ./frontend
-    ports:
-      - "${HTTP_PORT:-8080}:80"
-    depends_on:
-      - api
+    ports: ["80:80"]
+    depends_on: [api]
     restart: unless-stopped
+  db:
+    image: pgvector/pgvector:pg16
+    profiles: ["localdb"]
+    environment: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: researchlens }
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
 volumes:
   pgdata:
-  redisdata:
-  uploads:

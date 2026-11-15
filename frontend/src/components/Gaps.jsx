@@ -1,6 +1,33 @@
-import React from 'react';
-const titles={stated_limitations:'Author-stated limitations',weak_evidence:'Evidence coverage flags',library_gap:'Gaps in this collection'};
-export default function Gaps({flags,onSelect}){
- const groups=['stated_limitations','weak_evidence','library_gap'];
- return <><div className="eyebrow">Research gap explorer</div><h2 style={{margin:'12px 0'}}>What is still unknown?</h2><div className="notice">These are limitations in the papers examined, not proof that no research exists elsewhere.</div>{groups.map(kind=><div className="section" key={kind}><h3>{titles[kind]}</h3>{(flags||[]).filter(f=>f.kind===kind).slice(0,12).map(f=><div className="card" key={f.id}><p className="small" style={{lineHeight:1.6}}>{f.description}</p>{f.paper_id&&<button className="btn ghost" style={{marginTop:9,padding:'6px 10px'}} onClick={()=>onSelect(f.paper_id)}>View paper →</button>}</div>)}{!flags?.some(f=>f.kind===kind)&&<div className="muted small" style={{marginTop:12}}>No flagged items in this category.</div>}</div>)}</>;
+import { useEffect, useState } from 'react'
+import { api } from '../api'
+
+function List({ title, note, items }) {
+  return (
+    <section className="stack">
+      <h3>{title}</h3>
+      <p className="muted small">{note}</p>
+      {items.length === 0 && <p className="muted">Nothing flagged.</p>}
+      {items.map((f) => (
+        <article key={f.id} className="claim">
+          <p>{f.description}</p>
+          {f.evidence.map((x, i) => <blockquote key={i}>{x.quote}<footer className="small muted">{x.paper}{x.location ? `, ${x.location}` : ''}</footer></blockquote>)}
+        </article>
+      ))}
+    </section>
+  )
+}
+
+export default function Gaps({ id }) {
+  const [d, setD] = useState(null)
+  const [error, setError] = useState('')
+  useEffect(() => { api.flags(id).then(setD).catch((e) => setError(e.message)) }, [id])
+  if (error) return <p className="error">{error}</p>
+  if (!d) return <p className="muted">Loading…</p>
+  return (
+    <div className="three">
+      <List title="Stated limitations" note="Limits the authors themselves reported." items={d.limitations} />
+      <List title="Weakly supported claims" note="Abstract-only, small samples, or retraction notices, with no compatible support elsewhere in this library." items={d.weak_claims} />
+      <List title="Not found in this library" note="Topics the papers examined do not clearly address. This is about the current collection only, not all of science." items={d.library_gaps} />
+    </div>
+  )
 }

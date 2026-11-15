@@ -1,7 +1,31 @@
-import React,{useEffect,useState}from'react';import{getStatus}from'../api/client';
-export default function Progress({id,onDone,onBack}){
- const[status,setStatus]=useState(null),[error,setError]=useState('');
- useEffect(()=>{let alive=true;async function poll(){try{const x=await getStatus(id);if(!alive)return;setStatus(x);if(x.status==='complete')onDone(id)}catch(e){if(alive)setError(e.message)}}poll();const timer=setInterval(poll,2500);return()=>{alive=false;clearInterval(timer)}},[id]);
- const p=status?.progress||{};
- return <div className="panel" style={{maxWidth:720,margin:'70px auto',padding:34}}><div className="eyebrow">Building evidence map</div><h2 style={{margin:'14px 0'}}>{status?.question||'Preparing your workspace...'}</h2><div className="row" style={{margin:'25px 0'}}><span className="spinner"/><span>{p.stage||'Queued'}</span></div><div className="progress"><div className="bar" style={{width:`${status?.status==='complete'?100:Math.min(90,10+(p.processed||0)*4)}%`}}/></div><div className="stats" style={{gridTemplateColumns:'repeat(3,1fr)'}}><div className="stat"><div className="stat-num">{p.papers_found||0}</div><div className="stat-label">Discovered</div></div><div className="stat"><div className="stat-num">{p.claims_extracted||0}</div><div className="stat-label">Validated findings</div></div><div className="stat"><div className="stat-num">{p.edges_verified||0}</div><div className="stat-label">Comparisons</div></div></div><p className="muted small" style={{lineHeight:1.8}}>External retrieval and Gemini analysis may take several minutes. Uploaded PDFs and source extracts are processed by the background worker.</p>{(status?.status==='failed'||error)&&<div className="notice danger" style={{marginTop:20}}>{status?.error||error}</div>}<button className="btn ghost" style={{marginTop:20}} onClick={onBack}>Back to search</button></div>
+const NAMES = {
+  queued: 'Queued', understanding: 'Understanding the question', discovering: 'Finding papers', retrieving: 'Retrieving text',
+  extracting: 'Extracting claims', matching: 'Matching comparable claims', verifying: 'Verifying relationships',
+  flagging: 'Flagging limits and gaps', layout: 'Laying out the graph', done: 'Done',
+}
+
+export default function Progress({ status, onHome }) {
+  const { counts = {}, progress = {}, stages = [] } = status
+  const cur = stages.indexOf(status.status)
+  const lanes = counts.lanes || {}
+  const stats = [
+    ['Found via APIs', lanes.A ?? 0], ['Found via Google Scholar', lanes.B ?? 0], ['Uploaded', lanes.D ?? 0],
+    ['Duplicates removed', progress.duplicates_removed ?? 0], ['Papers kept', counts.kept ?? 0],
+    ['Full text', counts.full_text ?? 0], ['Abstract only', counts.abstract_only ?? 0],
+    ['Claims extracted', counts.claims ?? 0], ['Quotes rejected', progress.claims_rejected ?? 0], ['Pairs verified', progress.pairs_verified ?? 0],
+  ]
+  return (
+    <div className="page narrow">
+      <button className="link" onClick={onHome}>All workspaces</button>
+      <h2 className="question">{status.question}</h2>
+      <ol className="steps">
+        {stages.filter((s) => s !== 'queued').map((s) => {
+          const i = stages.indexOf(s)
+          return <li key={s} className={i < cur ? 'done' : i === cur ? 'now' : ''}>{NAMES[s]}</li>
+        })}
+      </ol>
+      <dl className="stats">{stats.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+      {(progress.warnings || []).map((w, i) => <p key={i} className="warn small">{w}</p>)}
+    </div>
+  )
 }

@@ -1,4 +1,61 @@
-import React,{useState}from'react';import{Upload}from'lucide-react';import{addPaper}from'../api/client';
-export default function AddPaper({id,onAdded,disabled}){const[file,setFile]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
- async function submit(e){e.preventDefault();if(!file)return;setBusy(true);try{await addPaper(id,file);onAdded()}catch(e){setError(e.message);setBusy(false)}}
- return <><div className="eyebrow">Incremental evaluation</div><h2 style={{margin:'12px 0'}}>What changes if we add a paper?</h2><p className="muted small" style={{lineHeight:1.7}}>Upload a scientific PDF and compare its validated findings with claims already in your workspace. The graph updates after processing.</p><form onSubmit={submit} className="stack" style={{marginTop:20}}><label className="card" style={{cursor:'pointer',textAlign:'center',padding:32}}><Upload size={25} style={{margin:'0 auto 12px'}}/><div>{file?file.name:'Select a PDF (max 12 MB)'}</div><input type="file" accept="application/pdf" hidden onChange={e=>setFile(e.target.files?.[0]||null)}/></label><button className="btn primary" disabled={!file||busy||disabled}>{busy?'Uploading…':'Evaluate new paper →'}</button>{error&&<div className="notice danger">{error}</div>}</form></>}
+import { useEffect, useRef, useState } from 'react'
+import { api } from '../api'
+
+const ORDER = ['strengthens', 'challenges', 'qualifies', 'leaves_unanswered']
+const TITLE = { strengthens: 'Strengthens', challenges: 'Challenges', qualifies: 'Qualifies', leaves_unanswered: 'Leaves unanswered' }
+
+export default function AddPaper({ id, onUpdated, onViewGraph }) {
+  const [phase, setPhase] = useState('idle')
+  const [error, setError] = useState('')
+  const [report, setReport] = useState(null)
+  const timer = useRef(null)
+  useEffect(() => () => clearTimeout(timer.current), [])
+
+  const poll = (pid, tries = 0) => {
+    timer.current = setTimeout(async () => {
+      try { setReport(await api.impact(id, pid)); setPhase('done'); onUpdated() }
+      catch (e) {
+        const st = await api.status(id).catch(() => null)
+        if (st?.status === 'error') { setError(st.error || 'Evaluation failed'); setPhase('idle') }
+        else if (tries > 120) { setError('This is taking longer than expected.'); setPhase('idle') }
+        else poll(pid, tries + 1)
+      }
+    }, 3000)
+  }
+
+  const upload = async (e) => {
+    const f = e.target.files[0]
+    if (!f) return
+    setPhase('working'); setError(''); setReport(null)
+    try { poll((await api.addPaper(id, f)).paper_id) } catch (err) { setError(err.message); setPhase('idle') }
+  }
+
+  const groups = report ? ORDER.map((k) => [k, report.report.items.filter((i) => i.impact === k)]) : []
+  return (
+    <div className="stack narrowcol">
+      <h3>Add a paper</h3>
+      <p className="muted">Upload a new PDF. ResearchLens compares its claims with the existing graph and shows which earlier findings it strengthens, challenges, qualifies, or leaves unanswered.</p>
+      <input type="file" accept="application/pdf" onChange={upload} disabled={phase === 'working'} aria-label="Choose a PDF" />
+      {phase === 'working' && <p className="banner">Extracting claims and comparing them with the library…</p>}
+      {error && <p className="error">{error}</p>}
+      {report && (
+        <section className="stack">
+          <p>{report.summary || 'Comparison complete.'}</p>
+          {groups.map(([k, items]) => items.length > 0 && (
+            <div key={k}><h4>{TITLE[k]} ({items.length})</h4>
+              {items.map((i) => (
+                <article key={i.edge_id} className="claim">
+                  <p><strong>New:</strong> {i.new_claim.claim_text}</p>
+                  <p><strong>Earlier ({i.prior_claim.title}):</strong> {i.prior_claim.claim_text}</p>
+                  <p className="small muted">{i.reason}</p>
+                </article>
+              ))}
+            </div>
+          ))}
+          {report.report.no_prior_match.length > 0 && <p className="small muted">{report.report.no_prior_match.length} claim(s) in the new paper had no comparable earlier claim.</p>}
+          <button className="primary" onClick={onViewGraph}>View updated graph</button>
+        </section>
+      )}
+    </div>
+  )
+}

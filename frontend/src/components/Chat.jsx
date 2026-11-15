@@ -1,4 +1,37 @@
-import React,{useState}from'react';import{sendChat}from'../api/client';import{Send}from'lucide-react';
-export default function Chat({id,disabled}){const[message,setMessage]=useState(''),[history,setHistory]=useState([]),[busy,setBusy]=useState(false);
- async function submit(e){e.preventDefault();if(!message.trim()||busy||disabled)return;const q=message.trim();setHistory(p=>[...p,{role:'user',text:q}]);setMessage('');setBusy(true);try{const r=await sendChat(id,q);setHistory(p=>[...p,{role:'assistant',text:r.answer,sources:r.cited_claims}])}catch(e){setHistory(p=>[...p,{role:'error',text:e.message}])}finally{setBusy(false)}}
- return <div className="stack" style={{height:'100%'}}><div><div className="eyebrow">Evidence-grounded AI</div><h2 style={{marginTop:10}}>Ask the research</h2></div><div className="notice">Responses should cite validated claims. They may still contain mistakes; check the original paper.</div><div className="scroll" style={{flex:1,minHeight:200}}>{history.length===0?<div className="empty">Ask: “Why do these papers seem to disagree?”</div>:history.map((m,i)=><div key={i} className="card" style={{background:m.role==='user'?'#214039':''}}><div className="eyebrow">{m.role}</div><p className="small" style={{whiteSpace:'pre-wrap',lineHeight:1.7,marginTop:8}}>{m.text}</p>{m.sources?.length>0&&<p className="muted small" style={{marginTop:9}}>Retrieved {m.sources.length} validated claim(s); claim IDs are included in the answer.</p>}</div>)}{busy&&<div className="empty"><span className="spinner"/></div>}</div><form className="row" onSubmit={submit}><input className="input" value={message} onChange={e=>setMessage(e.target.value)} placeholder="Ask a question..." disabled={disabled}/><button className="btn primary" disabled={busy||disabled}><Send size={16}/></button></form>{disabled&&<span className="muted small">Chat is disabled in the offline sample.</span>}</div>}
+import { useState } from 'react'
+import { api } from '../api'
+
+export default function Chat({ id }) {
+  const [msgs, setMsgs] = useState([])
+  const [q, setQ] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const send = async (e) => {
+    e.preventDefault()
+    const question = q.trim()
+    if (!question) return
+    setMsgs((m) => [...m, { role: 'user', text: question }]); setQ(''); setBusy(true)
+    try {
+      const r = await api.chat(id, question)
+      setMsgs((m) => [...m, { role: 'assistant', text: r.answer, uncertainty: r.uncertainty, cites: r.citations }])
+    } catch (err) { setMsgs((m) => [...m, { role: 'error', text: err.message }]) }
+    setBusy(false)
+  }
+
+  return (
+    <div className="chat">
+      {msgs.length === 0 && <p className="muted">Ask about the evidence, for example: does one study disprove another, or which results depend on study length? Answers cite the claims and quotations they rely on.</p>}
+      {msgs.map((m, i) => (
+        <div key={i} className={`msg ${m.role}`}>
+          <p>{m.text}</p>
+          {m.uncertainty && <p className="small muted">Uncertain or missing: {m.uncertainty}</p>}
+          {m.cites?.map((c) => <blockquote key={c.label}><strong>{c.label}</strong> {c.quote}<footer className="small muted">{c.paper}{c.location ? `, ${c.location}` : ''}</footer></blockquote>)}
+        </div>
+      ))}
+      <form onSubmit={send} className="row">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Does Paper D disprove Paper A?" aria-label="Ask a question about this evidence" />
+        <button className="primary" disabled={busy || !q.trim()}>{busy ? 'Thinking…' : 'Ask'}</button>
+      </form>
+    </div>
+  )
+}

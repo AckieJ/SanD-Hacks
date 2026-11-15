@@ -1,8 +1,37 @@
-import React,{useEffect,useState}from'react';import{getEdge}from'../api/client';import{X,ExternalLink}from'lucide-react';
-const names={supports_compatible:'Compatible findings',genuine_contradiction:'Potential genuine contradiction',apparent_contradiction:'Apparent contradiction',related_not_comparable:'Not directly comparable',unresolved:'Unresolved'};
-export default function Compare({id,onClose,demoData}){
- const[data,setData]=useState(null),[err,setErr]=useState('');
- useEffect(()=>{if(!id)return;setData(null);if(demoData){setData(demoData[id]);return}getEdge(id).then(setData).catch(e=>setErr(e.message))},[id,demoData]);
- if(!id)return null;
- return <div className="modal-shade" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="row between"><div><div className="eyebrow">Source-to-source analysis</div><h2 style={{marginTop:8}}>Compare scientific findings</h2></div><button className="btn ghost" onClick={onClose}><X size={19}/></button></div>{err&&<div className="notice danger">{err}</div>}{!data&&!err&&<div className="empty"><span className="spinner"/></div>}{data&&<><div className="card" style={{marginTop:20}}><span className={'tag '+(data.label.includes('contradiction')?'amber':'teal')}>{names[data.label]||data.label}</span><p style={{marginTop:12,lineHeight:1.6}}>{data.reason}</p><div className="muted small" style={{marginTop:9}}>Model assessment confidence: {Math.round((data.confidence||0)*100)}%. This is not the probability a study is true.</div></div><div className="compare-grid">{['a','b'].map((key,i)=><div className="panel" key={key}><div className="eyebrow">Study {i?'B':'A'}</div><h3 style={{margin:'12px 0'}}>{data[key].title}</h3>{data[key].url&&<a href={data[key].url} target="_blank" rel="noopener noreferrer" className="small">View original <ExternalLink size={12} style={{display:'inline'}}/></a>}<div className="divider"/><p className="small" style={{lineHeight:1.7}}>{data[key].claim}</p><div className="quote">“{data[key].quote}”</div><span className="tag">{data[key].text_level}</span></div>)}</div><div className="panel" style={{marginTop:14}}><h3 style={{marginBottom:13}}>Study conditions</h3>{[['Population','population'],['Sample size','sample_n'],['Study design','design'],['Duration','duration'],['Outcome measure','measure'],['Statistical significance','significance']].map(([label,k])=><div className="compare-row" key={k}><span>{label}</span><span>{data.a[k]||'Not reported'}</span><span>{data.b[k]||'Not reported'}</span></div>)}{(data.factors||[]).length>0&&<div className="notice" style={{marginTop:16}}>Possible explanation factors: {data.factors.join(', ')}</div>}</div></>}</div></div>;
+import { useEffect, useState } from 'react'
+import { api, LABELS } from '../api'
+
+const ROWS = [['Population', 'population'], ['Sample size', 'sample_n'], ['Design', 'design'], ['Duration', 'duration'],
+  ['Measure', 'measure'], ['Direction', 'direction'], ['Significance', 'significance'], ['Effect size', 'effect_size']]
+const CHECK = { same_population: 'Population', same_duration: 'Duration', same_measure: 'Measure', same_design: 'Design' }
+
+export default function Compare({ id, onPaper }) {
+  const [e, setE] = useState(null)
+  const [error, setError] = useState('')
+  useEffect(() => { setE(null); api.edge(id).then(setE).catch((x) => setError(x.message)) }, [id])
+  if (error) return <p className="error">{error}</p>
+  if (!e) return <p className="muted">Loading…</p>
+  const L = LABELS[e.label] || { name: e.label, color: 'var(--muted)' }
+  const a = e.claim_a, b = e.claim_b
+  return (
+    <div className="stack">
+      <p className="verdict" style={{ borderLeftColor: L.color }}><strong>{L.name}</strong><span className="muted small"> · confidence {Math.round((e.confidence || 0) * 100)}%{e.impact ? ` · ${e.impact.replace('_', ' ')}` : ''}</span></p>
+      <p>{e.reason}</p>
+      {e.factors?.length > 0 && <p className="small">Differences that may explain it: {e.factors.map((f) => <span key={f} className="badge">{f.replace('_', ' ')}</span>)}</p>}
+      <div className="scroll">
+        <table>
+          <thead><tr><th></th><th><button className="link" onClick={() => onPaper(a.paper.id)}>Study A</button></th><th><button className="link" onClick={() => onPaper(b.paper.id)}>Study B</button></th></tr></thead>
+          <tbody>
+            <tr><th>Paper</th><td>{a.paper.title} ({a.paper.year})</td><td>{b.paper.title} ({b.paper.year})</td></tr>
+            <tr><th>Evidence</th><td>{a.paper.text_level === 'full' ? 'Full text' : 'Abstract only'}</td><td>{b.paper.text_level === 'full' ? 'Full text' : 'Abstract only'}</td></tr>
+            {ROWS.map(([n, k]) => <tr key={k}><th>{n}</th><td>{a[k] ?? 'not reported'}</td><td>{b[k] ?? 'not reported'}</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+      <p className="small muted">Comparability: {Object.entries(CHECK).map(([k, n]) => `${n} ${e.comparability?.[k] == null ? 'unknown' : e.comparability[k] ? 'similar' : 'different'}`).join(', ')}</p>
+      {[a, b].map((c, i) => (
+        <blockquote key={i}><strong>Study {i ? 'B' : 'A'}</strong>: {c.quote}<footer className="small muted">{c.paper.title}, {c.location || 'location not found'}</footer></blockquote>
+      ))}
+    </div>
+  )
 }

@@ -1,12 +1,43 @@
-import React,{useState} from 'react';
-import{Search,Upload,ArrowRight,Network,ShieldCheck,FlaskConical}from'lucide-react';
-import{createWorkspace}from'../api/client';
-const examples=['Do AI tutors improve student learning outcomes?','Does intermittent fasting affect memory?','Do four-day workweeks increase productivity?'];
-export default function Setup({onCreated,onDemo}){
- const[question,setQuestion]=useState(''),[files,setFiles]=useState([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
- async function submit(e){e.preventDefault();if(question.trim().length<8)return;setBusy(true);setError('');try{const r=await createWorkspace(question,files);onCreated(r.workspace_id)}catch(e){setError(e.message);setBusy(false)}}
- return <div><div className="hero"><div className="eyebrow">Evidence-first scientific discovery</div><h1>Go beyond the abstract.<br/><strong>Question the evidence.</strong></h1><p>Explore where research agrees, contradicts, or simply studies different things. Every extracted finding is backed by a source quotation.</p></div>
- <form className="search-card" onSubmit={submit}><div className="row" style={{padding:'3px 8px'}}><Search size={21} color="#6ed5c0"/><span className="muted small">Your research question</span></div><textarea className="search-input" value={question} placeholder="What does the evidence really say about..." onChange={e=>setQuestion(e.target.value)} required/><div className="search-actions"><label className="btn ghost"><Upload size={16}/> {files.length?`${files.length} PDF(s) attached`:'Attach PDFs (optional)'}<input type="file" accept="application/pdf" multiple hidden onChange={e=>setFiles([...e.target.files].slice(0,3))}/></label><button type="submit" className="btn primary" disabled={busy}>{busy?<><span className="spinner"/>Starting…</>:<>Investigate <ArrowRight size={17}/></>}</button></div>{error&&<div className="notice danger" style={{marginTop:12}}>{error}</div>}</form>
- <div className="chips">{examples.map(x=><button key={x} className="chip" onClick={()=>setQuestion(x)}>{x}</button>)}</div><div style={{textAlign:'center'}}><button className="btn ghost" onClick={onDemo}>Explore interface with clearly labeled sample data →</button></div>
- <div className="feature-grid"><div className="feature"><Network color="#71dbc6"/><h3>Claim-level graph</h3><p>Follow relationships between specific findings, not just citations between papers.</p></div><div className="feature"><ShieldCheck color="#71dbc6"/><h3>Verifiable quotes</h3><p>Claims are shown only when their quotations match the retrieved source text.</p></div><div className="feature"><FlaskConical color="#71dbc6"/><h3>Research gaps</h3><p>Surface limitations and missing coverage within your searched collection.</p></div></div></div>
+import { useEffect, useState } from 'react'
+import { api } from '../api'
+
+const EXAMPLES = ['Do AI tutors improve learning outcomes?', 'Does intermittent fasting improve cognitive performance?', 'Does sleep after studying improve memory retention?']
+
+export default function Setup({ onCreated, onOpen }) {
+  const [question, setQuestion] = useState('')
+  const [files, setFiles] = useState([])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [recent, setRecent] = useState([])
+
+  useEffect(() => { api.list().then(setRecent).catch(() => {}) }, [])
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setBusy(true); setError('')
+    try { onCreated((await api.create(question, files)).id) } catch (err) { setError(err.message); setBusy(false) }
+  }
+
+  return (
+    <div className="page narrow">
+      <h1 className="brand">ResearchLens</h1>
+      <p className="lede">Ask one research question. See where studies agree, where they truly conflict, where they only seem to, and what is still open, with a quotation behind every judgment.</p>
+      <form onSubmit={submit} className="stack">
+        <label htmlFor="q">Your research question</label>
+        <textarea id="q" rows={3} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Do AI tutors improve learning outcomes?" required />
+        <div className="chips">{EXAMPLES.map((x) => <button type="button" key={x} className="chip" onClick={() => setQuestion(x)}>{x}</button>)}</div>
+        <label htmlFor="f">Starting papers (optional PDFs)</label>
+        <input id="f" type="file" accept="application/pdf" multiple onChange={(e) => setFiles(e.target.files)} />
+        <p className="muted small">Uploads stay private to this workspace. Without uploads, papers are found through OpenAlex, Google Scholar and public open-access pages.</p>
+        {error && <p className="error">{error}</p>}
+        <button className="primary" disabled={busy || question.trim().length < 8}>{busy ? 'Starting…' : 'Start investigation'}</button>
+      </form>
+      {recent.length > 0 && (
+        <section>
+          <h3>Recent workspaces</h3>
+          <ul className="plain">{recent.map((r) => <li key={r.id}><button className="link" onClick={() => onOpen(r.id)}>{r.question}</button> <span className="muted small">{r.status}</span></li>)}</ul>
+        </section>
+      )}
+    </div>
+  )
 }
